@@ -1,0 +1,8 @@
+venv
+
+### Python ###
+__pycache__/
+build/
+*.egg-info
+.pytest_cache
+.ruff_cache
