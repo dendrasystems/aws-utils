@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "aws-utils"
-version = "1.0.0"
+version = "1.0.1"
 description = "A collection of utilities for working with the AWS boto3 client"
 classifiers=[
     "Development Status :: 5 - Production/Stable",
