@@ -155,13 +155,14 @@ class TestUploadFile:
             bucket="test",
             key="output/file.png",
             content_type="image/png",
+            content_disposition="attachment",
             client=mock_client,
         )
         mock_client.upload_file.assert_called_once_with(
             "some/file.png",
             Bucket="test",
             Key="output/file.png",
-            ExtraArgs={"ContentType": "image/png"},
+            ExtraArgs={"ContentType": "image/png", "ContentDisposition": "attachment"},
         )
 
 

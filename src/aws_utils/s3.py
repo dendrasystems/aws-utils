@@ -138,7 +138,7 @@ def upload_file(
     if content_type:
         extra_args["ContentType"] = content_type
     if content_disposition:
-        extra_args["ContentDisposition"] = content_type
+        extra_args["ContentDisposition"] = content_disposition
 
     client.upload_file(source_path, Bucket=bucket, Key=key, ExtraArgs=extra_args)
 
