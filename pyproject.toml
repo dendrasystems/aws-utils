@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "aws-utils"
-version = "1.0.1"
+version = "1.1.0"
 description = "A collection of utilities for working with the AWS boto3 client"
 classifiers=[
     "Development Status :: 5 - Production/Stable",
@@ -21,9 +21,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+npy = [
+  "numpy",
+]
+aio = [
+  "aioboto3",
+  "aiofiles",
+]
 test = [
   "pytest<8.4",
   "pytest-mock<4",
+  "moto[s3]",
+  "pytest_asyncio",
 ]
 
 [tool.ruff]
