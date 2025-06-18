@@ -70,7 +70,7 @@ class NpyWriter:
             raise ValueError("Unsupported numpy version")
         header_len_type = (
             "<H" if major == 1 else "<I"
-        )  # these are not publically exposed by numpy
+        )  # these are not publicly exposed by numpy
         header_len_str = fp.read(struct.calcsize(header_len_type))
         header_len = struct.unpack(header_len_type, header_len_str)[0]
         data_offset: int = MAGIC_LEN + struct.calcsize(header_len_type) + header_len
