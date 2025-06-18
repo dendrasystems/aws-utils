@@ -1,4 +1,3 @@
-import functools
 import logging
 import aioboto3
 import aiofiles
@@ -12,12 +11,6 @@ from .npy_storage import METADATA_KEY
 
 
 logger = logging.getLogger(__name__)
-
-
-@functools.lru_cache
-async def _get_async_client():
-    async with aioboto3.Session().client("s3") as client:
-        return client
 
 
 class AIONpyReader:
@@ -36,10 +29,17 @@ class AIONpyReader:
         self._cache_locally = cache_dir is not None
         self._local_cache_dir = Path(cache_dir) if cache_dir else None
         self._metadata_key = f"{self.key_prefix}/{METADATA_KEY}"
-        self._client = client or _get_async_client()
+        self._client = client
+        self._session = aioboto3.Session()
 
     def _get_shard_key(self, shard_filename: str) -> str:
         return f"{self.key_prefix}/{shard_filename}"
+
+    async def _get_client(self):
+        """Get the S3 client, creating one if not provided."""
+        if self._client is not None:
+            return self._client
+        return self._session.client("s3")
 
     async def prewarm_cache(self) -> None:
         """
@@ -51,11 +51,12 @@ class AIONpyReader:
         if not metadata_path.exists():
             metadata_path.parent.mkdir(parents=True, exist_ok=True)
             logger.info("Preloading metadata to local cache")
-            response = await self._client.get_object(
-                Bucket=self.bucket, Key=self._metadata_key
-            )
-            async with aiofiles.open(metadata_path, "wb") as f:
-                await f.write(await response["Body"].read())
+            async with await self._get_client() as client:
+                response = await client.get_object(
+                    Bucket=self.bucket, Key=self._metadata_key
+                )
+                async with aiofiles.open(metadata_path, "wb") as f:
+                    await f.write(await response["Body"].read())
 
         async with aiofiles.open(metadata_path) as f:
             content = await f.read()
@@ -67,11 +68,12 @@ class AIONpyReader:
             if not shard_path.exists():
                 shard_path.parent.mkdir(parents=True, exist_ok=True)
                 logger.info(f"Preloading shard {shard['filename']} to local cache")
-                response = await self._client.get_object(
-                    Bucket=self.bucket, Key=shard_key
-                )
-                async with aiofiles.open(shard_path, "wb") as f:
-                    await f.write(await response["Body"].read())
+                async with await self._get_client() as client:
+                    response = await client.get_object(
+                        Bucket=self.bucket, Key=shard_key
+                    )
+                    async with aiofiles.open(shard_path, "wb") as f:
+                        await f.write(await response["Body"].read())
 
     async def check_exists(self) -> bool:
         """
@@ -81,7 +83,7 @@ class AIONpyReader:
             f"Checking if embeddings exist in S3 at s3://{self.bucket}/{self._metadata_key}"
         )
         try:
-            async with self._client as client:
+            async with await self._get_client() as client:
                 await client.head_object(Bucket=self.bucket, Key=self._metadata_key)
             return True
         except ClientError:
@@ -97,12 +99,13 @@ class AIONpyReader:
                     content = await f.read()
                     self._metadata_cache = json.loads(content)
             else:
-                response = await self._client.get_object(
-                    Bucket=self.bucket, Key=self._metadata_key
-                )
-                self._metadata_cache = json.loads(
-                    (await response["Body"].read()).decode("utf-8")
-                )
+                async with await self._get_client() as client:
+                    response = await client.get_object(
+                        Bucket=self.bucket, Key=self._metadata_key
+                    )
+                    self._metadata_cache = json.loads(
+                        (await response["Body"].read()).decode("utf-8")
+                    )
         return self._metadata_cache
 
     async def _range_read(
@@ -116,12 +119,13 @@ class AIONpyReader:
                 await f.seek(start_byte)
                 return await f.read(end_byte - start_byte + 1)
         else:
-            response = await self._client.get_object(
-                Bucket=self.bucket,
-                Key=embeddings_key,
-                Range=f"bytes={start_byte}-{end_byte}",
-            )
-            return await response["Body"].read()
+            async with await self._get_client() as client:
+                response = await client.get_object(
+                    Bucket=self.bucket,
+                    Key=embeddings_key,
+                    Range=f"bytes={start_byte}-{end_byte}",
+                )
+                return await response["Body"].read()
 
     async def _read_shard_chunk(
         self, shard: dict[str, Any], start_idx: int, end_idx: int
