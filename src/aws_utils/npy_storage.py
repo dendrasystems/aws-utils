@@ -26,6 +26,7 @@ import io
 import json
 import logging
 import struct
+from botocore.exceptions import ClientError
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -218,7 +219,7 @@ class NpyReader:
         try:
             self._client.head_object(Bucket=self.bucket, Key=self._metadata_key)
             return True
-        except self._client.exceptions.ClientError:
+        except ClientError:
             return False
 
     def _get_metadata(self) -> dict[str, Any]:

@@ -4,6 +4,7 @@ import aioboto3
 import aiofiles
 import json
 import numpy as np
+from botocore.exceptions import ClientError
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
@@ -83,7 +84,7 @@ class AIONpyReader:
             async with self._client as client:
                 await client.head_object(Bucket=self.bucket, Key=self._metadata_key)
             return True
-        except self._client.exceptions.ClientError:
+        except ClientError:
             return False
 
     async def _get_metadata(self) -> dict[str, Any]:
