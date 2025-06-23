@@ -52,11 +52,11 @@ class AIONpyReader:
             metadata_path.parent.mkdir(parents=True, exist_ok=True)
             logger.info("Preloading metadata to local cache")
             async with await self._get_client() as client:
-                response = await client.get_object(
-                    Bucket=self.bucket, Key=self._metadata_key
+                await client.download_file(
+                    Bucket=self.bucket,
+                    Key=self._metadata_key,
+                    Filename=str(metadata_path),
                 )
-                async with aiofiles.open(metadata_path, "wb") as f:
-                    await f.write(await response["Body"].read())
 
         async with aiofiles.open(metadata_path) as f:
             content = await f.read()
@@ -69,11 +69,9 @@ class AIONpyReader:
                 shard_path.parent.mkdir(parents=True, exist_ok=True)
                 logger.info(f"Preloading shard {shard['filename']} to local cache")
                 async with await self._get_client() as client:
-                    response = await client.get_object(
-                        Bucket=self.bucket, Key=shard_key
+                    await client.download_file(
+                        Bucket=self.bucket, Key=shard_key, Filename=str(shard_path)
                     )
-                    async with aiofiles.open(shard_path, "wb") as f:
-                        await f.write(await response["Body"].read())
 
     async def check_exists(self) -> bool:
         """

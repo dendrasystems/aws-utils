@@ -189,11 +189,9 @@ class NpyReader:
         if not metadata_path.exists():
             metadata_path.parent.mkdir(parents=True, exist_ok=True)
             logger.info("Preloading metadata to local cache")
-            response = self._client.get_object(
-                Bucket=self.bucket, Key=self._metadata_key
+            self._client.download_file(
+                Bucket=self.bucket, Key=self._metadata_key, Filename=str(metadata_path)
             )
-            with open(metadata_path, "wb") as f:
-                f.write(response["Body"].read())
 
         with open(metadata_path) as f:
             content = f.read()
@@ -205,9 +203,9 @@ class NpyReader:
             if not shard_path.exists():
                 shard_path.parent.mkdir(parents=True, exist_ok=True)
                 logger.info(f"Preloading shard {shard['filename']} to local cache")
-                response = self._client.get_object(Bucket=self.bucket, Key=shard_key)
-                with open(shard_path, "wb") as f:
-                    f.write(response["Body"].read())
+                self._client.download_file(
+                    Bucket=self.bucket, Key=shard_key, Filename=str(shard_path)
+                )
 
     def check_exists(self) -> bool:
         """
