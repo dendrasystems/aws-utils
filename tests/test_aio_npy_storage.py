@@ -30,6 +30,9 @@ class MockAsyncS3Client:
         response["Body"] = MockAsyncBody(response["Body"])
         return response
 
+    async def download_file(self, Bucket, Key, Filename):
+        self.sync_client.download_file(Bucket=Bucket, Key=Key, Filename=Filename)
+
 
 class MockAsyncBody:
     def __init__(self, sync_body):
