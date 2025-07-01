@@ -72,7 +72,7 @@ class TestAIONpyReader:
         )
         yield
 
-    async def test_check_exists(self, s3, test_bucket):
+    async def test_check_exists(self, s3, tmp_path, test_bucket):
         mock_client = MockAsyncS3Client(s3)
         assert await self.reader.check_exists() is True
 
@@ -80,6 +80,18 @@ class TestAIONpyReader:
             bucket=test_bucket, key_prefix="nonexistent", client=mock_client
         )
         assert await non_existent_reader.check_exists() is False
+
+        cached_reader = AIONpyReader(
+            bucket=test_bucket,
+            key_prefix="something_completely_different",
+            client=mock_client,
+            cache_dir=str(tmp_path),
+        )
+        meta_path = tmp_path / cached_reader._metadata_key
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        meta_path.write_bytes(b"{}")  # minimal valid JSON
+
+        assert await cached_reader.check_exists() is True
 
     async def test_get_sample_count(self):
         count = await self.reader.get_sample_count()

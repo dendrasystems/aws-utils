@@ -1,7 +1,7 @@
 import logging
 import aioboto3
 import aiofiles
-import json
+import orjson
 import numpy as np
 from botocore.exceptions import ClientError
 from pathlib import Path
@@ -60,7 +60,7 @@ class AIONpyReader:
 
         async with aiofiles.open(metadata_path) as f:
             content = await f.read()
-            self._metadata_cache = json.loads(content)
+            self._metadata_cache = orjson.loads(content)
 
         for shard in self._metadata_cache["shards"]:
             shard_key = self._get_shard_key(shard["filename"])
@@ -80,6 +80,12 @@ class AIONpyReader:
         logger.info(
             f"Checking if embeddings exist in S3 at s3://{self.bucket}/{self._metadata_key}"
         )
+        if (
+            self._cache_locally
+            and (self._local_cache_dir / self._metadata_key).exists()
+        ):
+            return True
+
         try:
             async with await self._get_client() as client:
                 await client.head_object(Bucket=self.bucket, Key=self._metadata_key)
@@ -95,15 +101,13 @@ class AIONpyReader:
                     self._local_cache_dir / self._metadata_key
                 ) as f:
                     content = await f.read()
-                    self._metadata_cache = json.loads(content)
+                    self._metadata_cache = orjson.loads(content)
             else:
                 async with await self._get_client() as client:
                     response = await client.get_object(
                         Bucket=self.bucket, Key=self._metadata_key
                     )
-                    self._metadata_cache = json.loads(
-                        (await response["Body"].read()).decode("utf-8")
-                    )
+                    self._metadata_cache = orjson.loads((await response["Body"].read()))
         return self._metadata_cache
 
     async def _range_read(
