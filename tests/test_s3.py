@@ -192,3 +192,23 @@ class TestUploadDir:
             ]
         )
         mock_manager.shutdown.assert_called_once()
+
+
+class TestGetBucketRegion:
+    @pytest.mark.parametrize(
+        ("headers", "expected"),
+        [
+            ({"x-amz-bucket-region": "us-east-1"}, "us-east-1"),
+            ({"x-amz-bucket-region": "eu-central-1"}, "eu-central-1"),
+            ({}, None),
+        ],
+    )
+    def test_func(self, headers, expected):
+        mock_client = mock.MagicMock()
+        mock_client.head_bucket.return_value = {
+            "ResponseMetadata": {"HTTPHeaders": headers}
+        }
+
+        result = s3.get_bucket_region(bucket_name="my-bucket", client=mock_client)
+        assert result == expected
+        mock_client.head_bucket.assert_called_once_with(Bucket="my-bucket")
