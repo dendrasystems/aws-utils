@@ -17,6 +17,19 @@ class S3UrlParts(NamedTuple):
     key: str
 
 
+def get_bucket_region(bucket_name: str, client=None) -> str | None:
+    """
+    Dynamically find the region for a given S3 bucket.
+    """
+    s3_client = client or _get_client()
+    response = s3_client.head_bucket(Bucket=bucket_name)
+    return (
+        response.get("ResponseMetadata", {})
+        .get("HTTPHeaders", {})
+        .get("x-amz-bucket-region", None)
+    )
+
+
 def parse_s3_url(url: str) -> S3UrlParts:
     """
     Parses an s3 URL with either an s3:// or https:// scheme, to extract the bucket and key.
@@ -157,5 +170,6 @@ def upload_dir(source_path: str, bucket: str, prefix: str, client=None):
             relative_path = os.path.relpath(local_path, source_path)
             s3_path = os.path.join(prefix, relative_path)
             manager.upload(local_path, bucket, s3_path)
+
     # Wait for all uploads to complete
     manager.shutdown()
