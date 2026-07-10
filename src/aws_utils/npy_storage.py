@@ -43,6 +43,13 @@ logger = logging.getLogger(__name__)
 METADATA_KEY = "embeddings_metadata.json"
 
 
+def _normalize_url(url: str) -> str:
+    """Strip s3://bucket/ prefix if present so key-only and full-URL forms match."""
+    if url.startswith("s3://"):
+        return url.split("/", 3)[-1]
+    return url
+
+
 class NpyWriter:
     """
     S3-compatible numpy array writer.
@@ -324,19 +331,21 @@ class NpyReader:
         shards = metadata["shards"]
         embedding_dim = metadata["embedding_dim"]
 
-        # Create a mapping from URL to (shard_index, url_index)
+        # Build lookup with normalized keys so that full s3://bucket/key URLs and
+        # bare key paths both resolve to the same entry regardless of how the NPY
+        # metadata was written.
         url_to_location = {}
         for shard_idx, shard in enumerate(shards):
             for url_idx, url in enumerate(shard["urls"]):
-                url_to_location[url] = (shard_idx, url_idx)
+                url_to_location[_normalize_url(url)] = (shard_idx, url_idx)
 
         # Prepare results in the same order as input
         embeddings_list = []
         found_urls = []
 
         for url in urls:
-            if url in url_to_location:
-                shard_idx, url_idx = url_to_location[url]
+            if _normalize_url(url) in url_to_location:
+                shard_idx, url_idx = url_to_location[_normalize_url(url)]
                 shard = shards[shard_idx]
                 embedding = self._read_shard_chunk(shard, url_idx, url_idx + 1)
                 embeddings_list.append(embedding)
